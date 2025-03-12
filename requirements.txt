@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+requests
+pymongo
+authlib
+chromadb
+openai==0.28.0
+chromadb==0.4.24
+python-dotenv
+gdown
