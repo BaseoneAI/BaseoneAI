@@ -1,10 +1,10 @@
 fastapi
-uvicorn
 requests
 pymongo
-authlib
+openai
 chromadb
-openai==0.28.0
-chromadb==0.4.24
+uvicorn
+starlette
+Authlib
 python-dotenv
 gdown
