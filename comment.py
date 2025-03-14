@@ -1,10 +1,5 @@
-from pymongo import MongoClient
+import motor.motor_asyncio
 
-MONGO_URI = "your_mongo_uri_here"
-client = MongoClient(MONGO_URI)
-
-try:
-    client.server_info()  # Ping the server
-    print("✅ MongoDB connected successfully!")
-except Exception as e:
-    print(f"❌ MongoDB connection failed: {e}")
+client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+db = client.test_db
+print("MongoDB connection successful!")
