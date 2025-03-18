@@ -1,87 +1,116 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse, JSONResponse
-import httpx
-import logging
-import jwt
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse
+import secrets
+from urllib.parse import urlencode
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.responses import JSONResponse
 from starlette.config import Config
-from database import upsert_user
+import requests
 
-app = FastAPI()
-
+# Load environment variables from .env
 config = Config(".env")
 
-app.add_middleware(SessionMiddleware, secret_key=config("SECRET_KEY"), session_cookie="session")
-
+# LinkedIn API Credentials from .env
 LINKEDIN_CLIENT_ID = config("LINKEDIN_CLIENT_ID")
 LINKEDIN_CLIENT_SECRET = config("LINKEDIN_CLIENT_SECRET")
 LINKEDIN_REDIRECT_URI = config("LINKEDIN_REDIRECT_URI")
+LINKEDIN_AUTHORIZE_URL = config("LINKEDIN_AUTHORIZE_URL")
+LINKEDIN_ACCESS_TOKEN_URL = config("LINKEDIN_ACCESS_TOKEN_URL")
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# MongoDB Configuration (if needed)
+MONGO_URI = config("MONGO_URI")
+MONGO_DB_NAME = config("MONGO_DB_NAME", default="BaseoneAI")
+MONGO_COLLECTION_NAME = config("MONGO_COLLECTION_NAME", default="BaseoneAI")
 
-AUTHORIZE_URL = "https://www.linkedin.com/oauth/v2/authorization"
-TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
+# OpenAI Key (if needed)
+OPENAI_API_KEY = config("OPENAI_API_KEY")
+ORGANIZATION_ID = config("TARGET_ORG_ID")
+ORG_API_URL = f"https://api.linkedin.com/v2/organizations/{ORGANIZATION_ID}"
 
-@app.get("/login/linkedin")
-async def linkedin_login(request: Request):
-    params = {
+# Initialize FastAPI app
+app = FastAPI()
+
+# Add session middleware for storing state
+app.add_middleware(SessionMiddleware, secret_key=config("SECRET_KEY"))
+
+@app.get("/login")
+async def login(request: Request):
+    """ Redirect user to LinkedIn OAuth for login """
+    state = secrets.token_urlsafe(16)  # Generate secure random state
+    request.session["linkedin_state"] = state  # Store state in session
+
+    auth_params = {
         "response_type": "code",
-        "client_id": LINKEDIN_CLIENT_ID,
-        "redirect_uri": LINKEDIN_REDIRECT_URI,
-        "scope": "openid profile email",
-        "state": "random_csrf_token_1234",
+        "client_id": LINKEDIN_CLIENT_ID,  # Use LinkedIn client ID from .env
+        "redirect_uri": LINKEDIN_REDIRECT_URI,  # Use redirect URI from .env
+        "scope": "openid profile email w_member_social r_organization_social w_organization_social rw_organization_admin",  # Modify the required scope
+        "state": state
     }
-    request.session["oauth_state"] = params["state"]
-    auth_url = f"{AUTHORIZE_URL}?{'&'.join([f'{k}={v}' for k,v in params.items()])}"
-
-    logger.debug(f"Redirecting user to LinkedIn: {auth_url}")
-    return RedirectResponse(auth_url)
+    auth_url = f"{LINKEDIN_AUTHORIZE_URL}?{urlencode(auth_params)}"
+    return HTMLResponse(f'<a href="{auth_url}">Login with LinkedIn</a>')
 
 @app.get("/auth/callback/linkedin")
 async def linkedin_callback(request: Request):
-    try:
-        code = request.query_params.get("code")
-        received_state = request.query_params.get("state")
-        stored_state = request.session.get("oauth_state")
+    """ Handle LinkedIn OAuth callback and exchange code for access token """
+    code = request.query_params.get("code")
+    received_state = request.query_params.get("state")
+    stored_state = request.session.get("linkedin_state")
 
-        if stored_state != received_state:
-            return JSONResponse({"error": "CSRF Warning! State mismatch"}, status_code=400)
+    if not code or not received_state:
+        raise HTTPException(status_code=400, detail="Missing code or state")
 
-        async with httpx.AsyncClient() as client:
-            token_response = await client.post(
-                TOKEN_URL,
-                data={
-                    "grant_type": "authorization_code",
-                    "code": code,
-                    "redirect_uri": LINKEDIN_REDIRECT_URI,
-                    "client_id": LINKEDIN_CLIENT_ID,
-                    "client_secret": LINKEDIN_CLIENT_SECRET,
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
+    if received_state != stored_state:
+        raise HTTPException(status_code=403, detail="Invalid state. Possible CSRF attack.")
 
-        token_data = token_response.json()
-        access_token = token_data.get("access_token")
-        id_token = token_data.get("id_token")
+    # Exchange the authorization code for an access token
+    access_token = await get_access_token(code)
+    
+    if access_token:
+        return {"message": "Access token obtained successfully!", "access_token": access_token}
+    else:
+        raise HTTPException(status_code=400, detail="Failed to obtain access token")
 
-        if not access_token or not id_token:
-            return JSONResponse({"error": "Failed to retrieve tokens", "response": token_data}, status_code=400)
+async def get_access_token(code: str):
+    """
+    Exchange the authorization code for an access token from LinkedIn.
+    """
+    token_data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": LINKEDIN_REDIRECT_URI,
+        "client_id": LINKEDIN_CLIENT_ID,
+        "client_secret": LINKEDIN_CLIENT_SECRET
+    }
 
-        decoded_token = jwt.decode(id_token, options={"verify_signature": False})
+    # Make the request to LinkedIn to obtain the access token
+    response = requests.post(LINKEDIN_ACCESS_TOKEN_URL, data=token_data)
+    token_info = response.json()
 
-        user_data = {
-            "linkedin_id": decoded_token.get("sub"),
-            "first_name": decoded_token.get("given_name"),
-            "last_name": decoded_token.get("family_name"),
-            "email": decoded_token.get("email"),
-        }
+    if "access_token" in token_info:
+        return token_info["access_token"]
+    else:
+        return None
+@app.get("/organization/details")
+async def get_organization_details(request: Request):
+    """ Fetch details of the organization page by ID """
+    access_token = request.query_params.get("access_token")
+    
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Missing access token")
 
-        updated_user = await upsert_user(user_data)
+    # Authorization headers
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "X-Restli-Protocol-Version": "2.0.0"  # LinkedIn requires this header
+    }
 
-        logger.info(f"User saved/updated in MongoDB: {updated_user}")
-        return JSONResponse({"message": "Authentication successful", "user": updated_user})
+    # Make the request to the LinkedIn API
+    response = requests.get(ORG_API_URL, headers=headers)
 
-    except Exception as e:
-        logger.error(f"Error in LinkedIn OAuth: {str(e)}")
-        return JSONResponse({"error": "Authentication failed", "details": str(e)}, status_code=400)
+    if response.status_code == 200:
+        # Organization data retrieved successfully
+        org_data = response.json()
+        return JSONResponse(content=org_data)
+    else:
+        # Handle errors (e.g., insufficient permissions, invalid organization ID)
+        return JSONResponse({"error": response.json()}, status_code=response.status_code)
