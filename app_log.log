@@ -713,3 +713,14 @@ For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/St
 2025-03-18 13:52:44,961 - DEBUG - close.started
 2025-03-18 13:52:44,963 - DEBUG - close.complete
 2025-03-18 13:52:44,964 - ERROR - Failed to retrieve tokens. Response: {'error': 'invalid_request', 'error_description': 'Unable to retrieve access token: appid/redirect uri/code verifier does not match authorization code. Or authorization code expired. Or external member binding exists'}
+2025-03-19 18:29:02,379 - INFO - Redirecting user to LinkedIn login page
+2025-03-19 18:29:05,709 - INFO - Access token obtained successfully
+2025-03-19 18:43:42,952 - INFO - request
+2025-03-19 18:44:10,512 - INFO - request
+2025-03-19 18:46:48,895 - INFO - request
+2025-03-19 19:15:01,159 - INFO - Redirecting user to LinkedIn login page
+2025-03-19 19:15:26,996 - INFO - Redirecting user to LinkedIn login page
+2025-03-19 19:17:32,717 - INFO - Fetching latest organization post
+2025-03-19 19:17:34,632 - INFO - HTTP Request: GET https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR "HTTP/1.1 200 OK"
+2025-03-19 19:17:34,998 - INFO - HTTP Request: GET https://api.linkedin.com/v2/ugcPosts?q=authors&authors=List(urn:li:organization:106406962)&sortBy=LAST_MODIFIED&count=1 "HTTP/1.1 400 Bad Request"
+2025-03-19 19:17:34,999 - ERROR - Error fetching posts: {"status":400,"code":"ILLEGAL_ARGUMENT","message":"Invalid query parameters passed to request"}
