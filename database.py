@@ -17,7 +17,6 @@ org_collection = db[MONGO_COLLECTION_NAME]
 comments_collection = db[MONGO_COMMENTS_COLLECTION]
 
 async def upsert_organization(org_data: dict):
-    """Insert or update organization details in MongoDB."""
     filter_query = {"organization_id": org_data["organization_id"]}
     update_data = {"$set": org_data}
 

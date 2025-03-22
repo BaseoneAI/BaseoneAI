@@ -7,14 +7,14 @@ from pymongo import ReturnDocument
 async def insert_organization_data():
     """Manually insert organization data into MongoDB."""
     data = {
-        "_id": ObjectId("67d9490e596eeae3f070df8a"),  # Ensure correct ObjectId type
-        "organization_id": "106406962",
-        "organization_urn": "urn:li:organization:106406962",
-        "user_email": "kamesh29kumar@gmail.com",
-        "user_name": "Kamesh",
-        "comment_id": "7467872827",
-        "urn_id": "309e3098-1293-120938839-3909120912093",
-        "comment": "great sam, how reliable are you for my company's marketing team queries and replies?",
+        "_id": ObjectId("67d9490e596eeae3f070df8a"),
+        "organization_id": "106406963",
+        "organization_urn": "urn:li:organization:106406963",
+        "user_email": "kamesh9kumar@gmail.com",
+        "user_name": "ragul",
+        "comment_id": "7462872827",
+        "urn_id": "309e3098-1293-120938839-390912091222",
+        "comment": "Sam how reliable is this product for?",
         "post": "I'm Sam, a Marketing Analyst passionate about turning insights into actionable results. I analyze market trends and campaign data to maximize ROI."
     }
 
