@@ -103,33 +103,4 @@ async def fetch_latest_post(authorization: str = Header(...)):
 
     print(headers)
 
-    async with httpx.AsyncClient() as client:
-        # Step 1: Fetch organization where user is ADMINISTRATOR
-        org_url = "https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED"
-        org_response = await client.get(org_url, headers=headers)
-        if org_response.status_code != 200:
-            logger.error(f"Error fetching organization: {org_response.text}")
-            raise HTTPException(status_code=org_response.status_code, detail=org_response.text)
-
-        org_data = org_response.json()
-        if not org_data.get("elements"):
-            logger.warning("No organization found where user is an admin")
-            raise HTTPException(status_code=404, detail="No organization found where you are admin.")
-        
-        org_urn = org_data["elements"][0]["organizationalTarget"]
-
-        # Step 2: Fetch latest post for that organization
-        posts_url = f"https://api.linkedin.com/v2/ugcPosts?q=authors&authors=List({org_urn})&sortBy=LAST_MODIFIED&count=1"
-        posts_response = await client.get(posts_url, headers=headers)
-        if posts_response.status_code != 200:
-            logger.error(f"Error fetching posts: {posts_response.text}")
-            raise HTTPException(status_code=posts_response.status_code, detail=posts_response.text)
-
-        posts_data = posts_response.json()
-        if not posts_data.get("elements"):
-            logger.info("No posts found for this organization")
-            return {"message": "No posts found for this organization."}
-
-        latest_post = posts_data["elements"][0]
-        logger.info("Successfully fetched latest post")
-        return JSONResponse(content=latest_post)
+    

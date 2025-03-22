@@ -5,6 +5,7 @@ from bson import ObjectId
 
 config = Config(".env")
 
+# MongoDB Connection Details
 MONGO_URI = config("MONGO_URI")
 MONGO_DB_NAME = "linkedin_oauth_db"
 MONGO_COLLECTION_NAME = "organizations"
@@ -16,6 +17,7 @@ org_collection = db[MONGO_COLLECTION_NAME]
 comments_collection = db[MONGO_COMMENTS_COLLECTION]
 
 async def upsert_organization(org_data: dict):
+    """Insert or update organization details in MongoDB."""
     filter_query = {"organization_id": org_data["organization_id"]}
     update_data = {"$set": org_data}
 
@@ -23,7 +25,7 @@ async def upsert_organization(org_data: dict):
         filter_query,
         update_data,
         upsert=True,
-        return_document=ReturnDocument.AFTER
+        return_document=ReturnDocument.AFTER  # Ensures returning the updated document
     )
     
     if updated_org:
@@ -32,13 +34,14 @@ async def upsert_organization(org_data: dict):
     return updated_org
 
 async def save_linkedin_comments(org_id: str, comments: list):
+    """Save LinkedIn comments for a specific organization."""
     if not comments:
         return
 
     for comment in comments:
         comment_id = comment.get("id")
         if not comment_id:
-            continue  # skip if no id present
+            continue  # Skip if no ID is present
 
         # Add organization_id to comment doc
         comment["organization_id"] = org_id

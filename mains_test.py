@@ -14,14 +14,14 @@ async def test_mongo_connection():
 
         # Run a simple command to check connection
         server_info = await db.command("ping")
-        print("✅ MongoDB Connection Successful:", server_info)
+        print("MongoDB Connection Successful:", server_info)
 
         # List databases
         databases = await client.list_database_names()
-        print("📂 Available Databases:", databases)
+        print("Available Databases:", databases)
 
     except Exception as e:
-        print("❌ MongoDB Connection Failed:", str(e))
+        print("MongoDB Connection Failed:", str(e))
 
 # Run the test
 asyncio.run(test_mongo_connection())
