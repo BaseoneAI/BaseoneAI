@@ -30,7 +30,7 @@ async def send_to_openai(comment_text, user_name):
         ],
         max_tokens=200
     )
-    return response["choices"][0]["message"]["content"].strip()
+    return response["choices"][1]["message"]["content"].strip()
 
 async def process_comment(comment_doc):
     comment_id = comment_doc.get("_id")
