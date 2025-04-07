@@ -1,0 +1,10 @@
+fastapi
+requests
+pymongo
+openai
+chromadb
+uvicorn
+starlette
+Authlib
+python-dotenv
+gdown
